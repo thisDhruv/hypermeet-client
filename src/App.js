@@ -1,23 +1,20 @@
-import logo from './logo.svg';
+import {Routes, Route} from 'react-router-dom';
 import './App.css';
+import Lobby from './screens/Lobby';
+import NavBar from './components/NavBar';
+import Room from './screens/Room';
+import { useState } from 'react';
 
 function App() {
+  const[email,setEmail] = useState('');
+  const[room,setRoom] = useState('');
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <NavBar/>
+      <Routes>
+        <Route path="/" element={<Lobby room={room} setRoom={setRoom} email={email} setEmail={setEmail}/>}/>
+        <Route path="/room/:roomId" element={<Room email={email} room={room}/>}/>
+      </Routes>
     </div>
   );
 }

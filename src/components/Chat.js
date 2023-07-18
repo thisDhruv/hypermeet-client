@@ -26,7 +26,7 @@ const Chat = (props) => {
 
 
     const handleSendMessage = (e)=>{
-        setEmojiSelector(!emojiSelector)
+        setEmojiSelector(false)
         e.preventDefault();
         socket.emit("outgoing:message", { to: remoteSocketId,message:message});
         let newchat = chat;
@@ -52,18 +52,18 @@ const Chat = (props) => {
   return (
     <div className='relative h-[500px] shadow-md '>
         <div className='h-[500px] overflow-auto'>
-        <div className="h-max overflow-y-scroll flex flex-col">
+        <div className="h-max overflow-y-scroll flex flex-col p-2">
             
             {
                 
                 chat.map((object)=>{
                     // console.log(object);
                    if(object.code==1){
-                        return <div className="w-4/5 shadow-md rounded-md mt-5 border bg-green-100 text-left p-2 border-slate-950">
+                        return <div className="break-words w-min max-w-full  shadow-md h-auto rounded-md mt-5 border bg-green-100 text-left p-2">
                         {object.message}
                     </div>
                    }else{
-                    return <div className="w-4/5  shadow-md rounded-md mt-5 border right-0 self-end  bg-green-100 text-left p-2 ">
+                    return <div className="w-min max-w-full break-words shadow-md h-auto rounded-md mt-5 border right-0 self-end  bg-green-100 text-left p-2 ">
                     {object.message}
                 </div>
                    }
@@ -71,15 +71,6 @@ const Chat = (props) => {
                 })
             }
             
-            {/* <div className="w-4/5 rounded-md mt-5 border bg-green-100 text-left p-2 border-slate-950">
-                Hi how are you lets begin the interview process
-            </div>
-            <div className="w-4/5 rounded-md mt-5 border right-0 self-end  bg-green-100 text-left p-2 border-slate-950">
-                I am good sir, yes please!
-            </div>
-            <div className="w-4/5  rounded-md mt-5 border  bg-green-100 text-left  p-2 border-slate-950">
-                Hi how are you lets begin the interview processasdgnasdbgvadfb
-            </div> */}
         </div>
         </div>
        
@@ -89,7 +80,7 @@ const Chat = (props) => {
         <div className='absolute m-auto bottom-0 w-full bg-slate-300'>
     <div class="relative"> 
         {
-            emojiSelector && <EmojiPicker onEmojiClick={handleEmojiClick}  className="absolute" height={300} width={300} />
+            emojiSelector && <EmojiPicker onEmojiClick={handleEmojiClick}  className="absolute" height={420} width={270} />
         }
         <form>
         <BsFillEmojiSmileFill onClick={()=>{setEmojiSelector(!emojiSelector)}} className='absolute left-2.5 bottom-5 cursor-pointer'/>

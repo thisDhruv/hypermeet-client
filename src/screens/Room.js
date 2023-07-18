@@ -28,7 +28,6 @@ const Room = (props) => {
     const handleCallUser = async ()=>{
           const offer = await peer.getOffer();
           console.log("handleCallUser")
-          
           sendStreams();
           socket.emit("user:call", { to: remoteSocketId, offer,fromEmail:props.email });
     }
@@ -94,7 +93,6 @@ const Room = (props) => {
       
       async function muteCam() {
         socket.emit("camera:toggle",{to:remoteSocketId});
-
         console.log("send camera toggle");
         setVideoOn(!videoOn);
       }
@@ -171,7 +169,7 @@ const Room = (props) => {
    
    {
        remoteStream &&
-       <div>
+       <div className='relative player-wrapper m-auto'>
        <h4 class="text-2xl font-bold dark:text-white m-auto">{remoteEmail}</h4>
         {
         remoteVideo && <ReactPlayer playing className="m-auto bg-black" width="450px" height="450px" url={remoteStream}/>

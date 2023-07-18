@@ -9,7 +9,6 @@ const Lobby = (props) => {
     const room = props.room;
     const setRoom = props.setRoom;
 
-
     const socket = useSocket();
 
     // console.log(socket);

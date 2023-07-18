@@ -1,10 +1,14 @@
-import React, { startTransition, useCallback, useEffect, useState } from 'react'
+import React, { startTransition, useCallback, useEffect, useState, useRef } from 'react'
 import { useSocket } from '../context/SocketProvider'
 import ReactPlayer from 'react-player'
 import peer from '../service/peer'
 import Chat from '../components/Chat'
 import BottomBar from '../components/BottomBar'
 
+import * as tf from '@tensorflow/tfjs';
+import * as handpose from"@tensorflow-models/handpose" ;
+import * as fp from 'fingerpose'
+import Webcam from "react-webcam";
 
 
 const Room = (props) => {
@@ -15,10 +19,59 @@ const Room = (props) => {
     const [remoteEmail,setRemoteEmail] = useState(null);
     const [videoOn,setVideoOn] = useState(true);
     const [remoteVideo,setRemoteVideo] = useState(true);
+    const webcamRef=useRef(null);
+    const canvasRef=useRef(null);
+    const[state,toggletensor]=useState(1);
+    const [handrun,handchange]=useState(1);
     // const [roomStatus,setRoomStatus] = useState("You are alone here!");
     // let videoelement = null;
 
+    // handpose
+    const runHandPose=async()=>{
+      const net=await handpose.load();
+      console.log('handpose model loaded');
+     if(state==1){ 
+     setTimeout(function() {
+      setInterval(()=>{detect(net)},1000);
+     }, 50000);
+    }}
+    const detect =async (net)=>{
+     
+      if(typeof webcamRef.current!='undefined' && webcamRef.current!=null ){
+        const video=webcamRef.current.video;
+        
+        
+  
+       
+         const videoWidth=video.width;
+         const videoHeight=video.height;
+             
+         video.width=videoWidth;
+         video.height=videoHeight;
+  
+         canvasRef.current.width=videoWidth;
+         canvasRef.current.height=videoHeight;
+        
+        const hand= await net.estimateHands(video);
+        console.log(hand);
+        if(hand.length>0){
+          const GE= new fp.GestureEstimator([
+            fp.Gestures.VictoryGesture,
+            fp.Gestures.ThumbsUpGesture,
+            
+          ])
+          const gesture=await GE.estimate(hand[0].landmarks,8);
+          console.log(gesture);
+        }
+      }
+    }
+   if(handrun==1){
+    runHandPose();
+    handchange(0);
+  }
 
+
+    //end
     const handleUserJoined = useCallback(({email,id})=>{
         setRemoteSocketId(id);
         setRemoteEmail(email);
@@ -55,6 +108,7 @@ const Room = (props) => {
             audio: true,
             video: true,
         }); 
+        
         setMyStream(stream);
     }
 
@@ -93,6 +147,10 @@ const Room = (props) => {
 
       
       async function muteCam() {
+        const temp=state;
+        if(state==1)toggletensor(0);
+        if(state==0)toggletensor(1);
+      
         socket.emit("camera:toggle",{to:remoteSocketId});
 
         console.log("send camera toggle");
@@ -160,7 +218,7 @@ const Room = (props) => {
        myStream && <div className='relative player-wrapper m-auto'>
        <h4 class="text-2xl font-bold dark:text-white">{props.email}</h4>
        {
-        videoOn && <ReactPlayer playing muted className="m-auto bg-black" width="450px" height="450px" url={myStream}/>
+        videoOn &&   <Webcam ref={webcamRef}   style={{     width: 450,  height: 450,  }}/>
        }
        {
         !videoOn && <ReactPlayer muted className="m-auto bg-black" width="450px" height="450px" url={myStream}/>
@@ -202,7 +260,19 @@ const Room = (props) => {
     }
      <button type="button"  onClick={muteCam} class="text-white mt-1 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">{videoOn?<>Stream Off</>:<>Stream On</>}</button>
     
-    
+     <canvas ref={canvasRef}
+      style={{
+        position: "absolute",
+        marginLeft: "auto",
+        marginRight: "auto",
+        left: 0,
+        right: 0,
+        textAlign: "center",
+        zindex: 9,
+        width: 450,
+        height: 450,
+      }}
+    />
     
     
     </div>
@@ -212,5 +282,41 @@ const Room = (props) => {
     </>
   )
 }
+
+
+
+
+function App() {
+
+
+
+  
+  
+ 
+
+
+  return (
+   <div>
+
+videoOn &&   <Webcam ref={webcamRef}   style={{     width: 450,  height: 450,  }}
+      
+    />
+    <canvas ref={canvasRef}
+      style={{
+        position: "absolute",
+        marginLeft: "auto",
+        marginRight: "auto",
+        left: 0,
+        right: 0,
+        textAlign: "center",
+        zindex: 9,
+        width: 450,
+        height: 450,
+      }}
+    />
+   </div>
+  );
+}
+
 
 export default Room

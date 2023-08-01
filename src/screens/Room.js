@@ -4,6 +4,8 @@ import ReactPlayer from 'react-player'
 import peer from '../service/peer'
 import Chat from '../components/Chat'
 import BottomBar from '../components/BottomBar'
+import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition';
+
 
 import * as tf from '@tensorflow/tfjs';
 import * as handpose from"@tensorflow-models/handpose" ;
@@ -23,6 +25,38 @@ const Room = (props) => {
     const canvasRef=useRef(null);
     const[state,toggletensor]=useState(1);
     const [handrun,handchange]=useState(1);
+    const[combinedTranscript,setCombinedTranscript]=useState([]);
+    const [message,setMessage] = useState('');
+
+
+    const {
+      transcript,
+      interimTranscript,
+      finalTranscript,
+      resetTranscript,
+      listening
+    } = useSpeechRecognition({
+      commands: [
+        {
+          command: "reset",
+          callback: () => resetTranscript()
+        }
+      ]
+    });
+    if (!SpeechRecognition.browserSupportsSpeechRecognition()) {
+      console.log(
+        "Your browser does not support speech recognition software! Try Chrome desktop, maybe?"
+      );
+    }
+  
+
+    
+
+
+
+  
+
+
     // const [roomStatus,setRoomStatus] = useState("You are alone here!");
     // let videoelement = null;
 
@@ -30,10 +64,11 @@ const Room = (props) => {
     const runHandPose=async()=>{
       const net=await handpose.load();
       console.log('handpose model loaded');
+      console.log(state);
      if(state==1){ 
      setTimeout(function() {
       setInterval(()=>{detect(net)},1000);
-     }, 50000);
+     }, 10000);
     }}
     const detect =async (net)=>{
      
@@ -53,7 +88,7 @@ const Room = (props) => {
          canvasRef.current.height=videoHeight;
         
         const hand= await net.estimateHands(video);
-        console.log(hand);
+        //console.log(hand);
         if(hand.length>0){
           const GE= new fp.GestureEstimator([
             fp.Gestures.VictoryGesture,
@@ -61,7 +96,8 @@ const Room = (props) => {
             
           ])
           const gesture=await GE.estimate(hand[0].landmarks,8);
-          console.log(gesture);
+         // console.log(gesture);
+          await sendEmoji(gesture);
         }
       }
     }
@@ -70,8 +106,30 @@ const Room = (props) => {
     handchange(0);
   }
 
+  async function sendEmoji(data){
+    if(!data.gestures[0])return;
+    console.log("hi");
+    if(data.gestures[0].name=="victory")setMessage(message+" ✌️");
+    if(data.gestures[0].name=="thumbs_up")setMessage(message+" 👍");
 
+    console.log(data.gestures[0].name);
+  }
     //end
+
+    const listenContinuously = () => {
+      
+      if(!listening){
+        SpeechRecognition.startListening({
+          continuous: true,
+          language: "en"
+        });
+      }else{
+        SpeechRecognition.stopListening();
+      }
+      
+    }
+
+
     const handleUserJoined = useCallback(({email,id})=>{
         setRemoteSocketId(id);
         setRemoteEmail(email);
@@ -154,6 +212,12 @@ const Room = (props) => {
         console.log("send camera toggle");
         setVideoOn(!videoOn);
       }
+      
+      const handleIncomingTranscript = useCallback(({from,speech,frommail}) => {
+        let temp = combinedTranscript;
+        temp.push(frommail +": "+speech)
+        setCombinedTranscript(temp);
+      }, []);
     
     
     useEffect(() => {
@@ -193,7 +257,7 @@ const Room = (props) => {
         socket.on("pero:nego:needed",handleNegoNeedIncoming);
         socket.on("peer:nego:final", handleNegoNeedFinal);
         socket.on("camera:toggle",cameraToggleRemote);
-
+        socket.on("transcript:incoming",handleIncomingTranscript);
 
       return () => {
         socket.off("user:joined",handleUserJoined);
@@ -202,10 +266,24 @@ const Room = (props) => {
         socket.off("pero:nego:needed",handleNegoNeedIncoming);
         socket.off("peer:nego:final", handleNegoNeedFinal);
         socket.off("camera:toggle",cameraToggleRemote);
+        socket.off("transcript:incoming",handleIncomingTranscript);
+
 
       }
     }, [socket,handleUserJoined,startUserStream,handleIncomingCall])
-    
+
+    useEffect(() => {
+      if (finalTranscript !== "") {
+        console.log("Got final result:", finalTranscript);
+        socket.emit("transcript:outgoing", { to: remoteSocketId,speech:finalTranscript,frommail:props.email});
+        let temp = combinedTranscript;
+        temp.push(props.email +": "+finalTranscript)
+        setCombinedTranscript(temp);
+        console.log(combinedTranscript)
+        resetTranscript();
+      }
+    }, [interimTranscript, finalTranscript]);
+
   return (
     <>
     <div className='m-auto m-10'>
@@ -244,7 +322,7 @@ const Room = (props) => {
     <div className="bg-slate-300 shadow-md p-3 text-2xl">
         CHAT
     </div>
-    <Chat remoteSocketId={remoteSocketId}/>
+    <Chat remoteSocketId={remoteSocketId} message={message} setMessage={setMessage}/>
    </div>
 
 </div>
@@ -257,7 +335,8 @@ const Room = (props) => {
         </>
     }
      <button type="button"  onClick={muteCam} class="text-white mt-1 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">{videoOn?<>Stream Off</>:<>Stream On</>}</button>
-    
+     <button type="button"  onClick={listenContinuously} class="text-white mt-1 bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">{listening?"Off":"Start"} Transcript</button>
+
      <canvas ref={canvasRef}
       style={{
         position: "absolute",
@@ -276,7 +355,16 @@ const Room = (props) => {
     </div>
     
     <BottomBar status={remoteSocketId==null?"You are alone":"Connected"}/>
-    
+
+    <h1 className="m-auto text-6xl">Transcript</h1>
+    <h1 className="m-auto text-lime-200 text-2xl">{transcript}</h1>
+    <div className='m-auto w-1/2 text-left'>
+      {
+        combinedTranscript.map((s)=>{
+          return <div className='m-auto text-xl'>{s}</div>
+        })
+      }
+    </div>
     </>
   )
 }
@@ -284,37 +372,30 @@ const Room = (props) => {
 
 
 
-function App() {
+// function App() {
 
+//   return (
+//    <div>
 
-
-  
-  
- 
-
-
-  return (
-   <div>
-
-videoOn &&   <Webcam ref={webcamRef}   style={{     width: 450,  height: 450,  }}
+// videoOn &&   <Webcam ref={webcamRef}   style={{     width: 450,  height: 450,  }}
       
-    />
-    <canvas ref={canvasRef}
-      style={{
-        position: "absolute",
-        marginLeft: "auto",
-        marginRight: "auto",
-        left: 0,
-        right: 0,
-        textAlign: "center",
-        zindex: 9,
-        width: 450,
-        height: 450,
-      }}
-    />
-   </div>
-  );
-}
+//     />
+//     <canvas ref={canvasRef}
+//       style={{
+//         position: "absolute",
+//         marginLeft: "auto",
+//         marginRight: "auto",
+//         left: 0,
+//         right: 0,
+//         textAlign: "center",
+//         zindex: 9,
+//         width: 450,
+//         height: 450,
+//       }}
+//     />
+//    </div>
+//   );
+// }
 
 
 export default Room

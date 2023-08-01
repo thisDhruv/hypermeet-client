@@ -33,7 +33,6 @@ const Lobby = (props) => {
         
       }
     }, [socket,handleJoinCallBack])
-    
 
 
   return (

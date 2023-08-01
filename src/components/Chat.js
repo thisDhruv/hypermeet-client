@@ -15,7 +15,8 @@ import EmojiPicker, {
 
 const Chat = (props) => {
     const socket = useSocket();
-    const [message,setMessage] = useState('');
+    const setMessage = props.setMessage;
+    const message = props.message;
     const remoteSocketId=props.remoteSocketId;
     const [chat,setChat] = useState([]);
     const [emojiSelector,setEmojiSelector] = useState(false);

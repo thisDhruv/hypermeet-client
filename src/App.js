@@ -3,11 +3,12 @@ import './App.css';
 import Lobby from './screens/Lobby';
 import NavBar from './components/NavBar';
 import Room from './screens/Room';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 function App() {
   const[email,setEmail] = useState('');
   const[room,setRoom] = useState('');
+  
   return (
     <div className="App">
       <NavBar/>
